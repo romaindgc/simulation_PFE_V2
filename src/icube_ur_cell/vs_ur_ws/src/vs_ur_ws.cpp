@@ -330,13 +330,24 @@ int main(int argc, char *argv[])
     move_group_interface.setPlanningTime(planning_time_init);
 
     //Set the planner
+    move_group_interface.setPlanningPipelineId("ompl");
+    move_group_interface.setPlannerId("RRTstarkConfigDefault");
     //move_group_interface.setPlannerId("PRMstarkConfigDefault");
     //move_group_interface.setPlannerId("RRTConnectkConfigDefault");
-    move_group_interface.setPlannerId("RRTstarkConfigDefault");
+
 
     //Increase the speed and the acceleration of the robot at their maximum to reduce the time of the simulation
     move_group_interface.setMaxVelocityScalingFactor(0.05);
     move_group_interface.setMaxAccelerationScalingFactor(0.05);
+
+    //Set the initial pose 
+    RCLCPP_INFO(node->get_logger(), "Initial pose started");
+    rclcpp::sleep_for(std::chrono::seconds(2));
+    move_group_interface.setNamedTarget("initial");
+    move_group_interface.move();
+    RCLCPP_INFO(node->get_logger(), "Initial pose reached");
+    rclcpp::sleep_for(std::chrono::seconds(2));
+    
 
     // Set a buffer and a listerner for the transform
     auto tf_buffer = std::make_shared<tf2_ros::Buffer>(node->get_clock());
@@ -473,6 +484,7 @@ int main(int argc, char *argv[])
             {   
                 if(i==0){
                     success_point_1 = true;
+                    RCLCPP_INFO(node->get_logger(), "First point ok");
                 }
                 RCLCPP_INFO(node->get_logger(), "Planning succeeded.");
                 break; // Exit the loop if planning is successful
@@ -508,7 +520,10 @@ int main(int argc, char *argv[])
 
             if(success_point_1){
                 //We use a cartesian planner now 
-                //TODO
+                // Plus tard, bascule vers le planificateur Pilz
+                move_group_interface.setPlanningPipelineId("pilz_industrial_motion_planner");
+                move_group_interface.setPlannerId("PTP");  // ou "LIN", "CIRC" selon ton besoin
+                RCLCPP_INFO(node->get_logger(), "Cartesian planner will be used");
             }
 
             // Write the data to CSV file
