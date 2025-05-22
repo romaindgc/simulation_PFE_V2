@@ -1,0 +1,26 @@
+# Ignorer les dossiers générés par colcon
+build/
+install/
+log/
+
+# Ignorer les fichiers temporaires
+*.pyc
+*.pyo
+*.swp
+*.swo
+__pycache__/
+
+# Ignorer les fichiers CMake générés
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Ignorer les fichiers de configuration utilisateur
+.vscode/
+.idea/
+*.iml
+
+# Ignorer les fichiers de dépendances Python
+venv/
+.env/
