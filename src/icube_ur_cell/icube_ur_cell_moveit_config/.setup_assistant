@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: icube_ur_cell_description
+    relative_path: urdf/icube_ur_cell.urdf.xacro
+    xacro_args: ur_type:=ur5e
+  srdf:
+    relative_path: config/icube_ur_cell.srdf
+  package_settings:
+    author_name: philippe zanne
+    author_email: zanne.philippe@unistra.fr
+    generated_timestamp: 1747753955

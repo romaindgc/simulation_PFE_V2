@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+<xacro:macro name="plate_support" params="
+    parent
+    tf_prefix
+    " 
+>
+  <material name="white">
+       <color rgba="1 1 1 1"/>
+  </material>
+
+    <!-- link of the rectangular plate as a tool (Rom1)-->
+    <!-- Déclaration des propriétés -->
+    <xacro:property name="plate_width" value="0.3" />
+    <xacro:property name="plate_height" value="0.3" />
+    <xacro:property name="plate_thickness" value="0.001" />
+    <xacro:property name="plate_density" value="7600" />  <!-- en kg/m^3 -->
+    <xacro:property name="plate_mass" value="${plate_density * plate_width * plate_height * plate_thickness}" />
+
+
+   <!-- Inertia for the plate (Rom1) -->
+  <xacro:macro name="rectangular_inertial" params="height width depth mass *origin">
+    <inertial>
+      <mass value="${mass}" />
+      <xacro:insert_block name="origin" />
+      <inertia ixx="${0.0833333 * mass * (width * width + depth * depth)}" ixy="0.0" ixz="0.0"
+        iyy="${0.0833333 * mass * (depth * depth + height * height)}" iyz="0.0"
+        izz="${0.0833333 * mass * (width * width + height * height)}" />
+    </inertial>
+  </xacro:macro>
+
+
+    <!-- Utilisation dans le lien -->
+    <link name="${tf_prefix}plate_support">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${plate_width} ${plate_height} ${plate_thickness}"/>
+        </geometry>
+        <material name="white"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${plate_width} ${plate_height} ${plate_thickness}"/>
+        </geometry>
+      </collision>
+      <xacro:rectangular_inertial height="${plate_height}" width="${plate_width}" depth="${plate_thickness}" mass="${plate_mass}">
+        <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+      </xacro:rectangular_inertial>
+    </link>
+
+  <joint name="${tf_prefix}plate_support_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${tf_prefix}plate_support" />
+      <origin xyz="0 0 0.0" rpy="0 0 0" />
+  </joint>
+</xacro:macro>
+</robot>
