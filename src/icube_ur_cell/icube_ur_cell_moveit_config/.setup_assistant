@@ -2,7 +2,7 @@ moveit_setup_assistant_config:
   urdf:
     package: icube_ur_cell_description
     relative_path: urdf/icube_ur_cell.urdf.xacro
-    xacro_args: ur_type:=ur5e
+    xacro_args: ur_type:=ur5
   srdf:
     relative_path: config/icube_ur_cell.srdf
   package_settings:

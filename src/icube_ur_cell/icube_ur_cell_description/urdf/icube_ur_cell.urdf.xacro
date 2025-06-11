@@ -12,6 +12,7 @@
 
   <link name="world"/>
   <!--This will create the scene where the robot is located in-->
+  
   <xacro:icube_ur_cell
     parent="world"
     ur_type="$(arg ur_type)"

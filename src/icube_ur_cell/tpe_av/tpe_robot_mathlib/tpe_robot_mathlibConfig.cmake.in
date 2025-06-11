@@ -1,0 +1,15 @@
+# - Config file for the tpe_robot_mathlib package
+# It defines the following variables
+#  tpe_robot_mathlib_INCLUDE_DIRS - include directories for FooBar
+#  tpe_robot_mathlib_LIBRARIES    - libraries to link against
+#  tpe_robot_mathlib_EXECUTABLE   - the bar executable
+
+set(tpe_robot_mathlib_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+include("${tpe_robot_mathlib_DIR}/export_tpe_robot_mathlib.cmake")
+
+# These are IMPORTED targets created by tpe_robot_mathlibTargets.cmake
+set(tpe_robot_mathlib_LIBRARIES mathlib)
+
+

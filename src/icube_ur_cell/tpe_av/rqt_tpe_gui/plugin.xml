@@ -1,0 +1,15 @@
+<library path="rqt_tpe_gui">
+  <class name="rqt_tpe_gui/TPEView" type="rqt_tpe_gui::TPEView" base_class_type="rqt_gui_cpp::Plugin">
+    <description>Rqt TPE GUI for visual robot control</description>
+    <qtgui>
+      <group>
+        <label>_Visual Robot Control_</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to visual robot control.</statustip>
+      </group>
+      <label>RQT TPE Gui</label>
+      <icon type="theme">image-x-generic</icon>
+      <statustip>An rqt tpe gui.</statustip>
+    </qtgui>
+  </class>
+</library>

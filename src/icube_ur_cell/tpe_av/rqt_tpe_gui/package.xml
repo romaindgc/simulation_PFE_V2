@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>rqt_tpe_gui</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="zanne.philippe@unistra.fr">tirrex</maintainer>
+  <license>TODO: License declaration</license>
+
+ <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+
+  <build_depend>qtbase5-dev</build_depend>
+  <build_depend>qt_gui_cpp</build_depend>
+  <build_depend>rqt_gui</build_depend>
+  <build_depend>rqt_gui_cpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>tpe_base</build_depend>
+  <build_depend>pluginlib</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+
+
+
+  <exec_depend>qt_gui_cpp</exec_depend>
+  <exec_depend>rqt_gui</exec_depend>
+  <exec_depend>rqt_gui_cpp</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>tpe_base</exec_depend>
+  <exec_depend>pluginlib</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <rqt_gui plugin="${prefix}/plugin.xml"/>
+  </export>
+</package>

@@ -8,7 +8,7 @@
   <xacro:include filename="$(find ur_description)/urdf/ur.ros2_control.xacro"/>
 
   <!--We need to specify the arguments used for parametrizing our description-->
-  <xacro:arg name="ur_type" default="ur5e"/>
+  <xacro:arg name="ur_type" default="ur5"/>
   <xacro:arg name="joint_limit_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
   <xacro:arg name="kinematics_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
   <xacro:arg name="physical_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>

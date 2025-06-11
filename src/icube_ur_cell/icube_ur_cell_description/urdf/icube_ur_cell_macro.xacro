@@ -37,20 +37,57 @@
     <child link="ground_plane"/>
   </joint>
 
+  <link name="support_ur">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.7 0.65 1.0"/>
+      </geometry>
+      <material name="ground_white">
+        <color rgba="1 1 1 0.5"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.7 0.65 1.0"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="support_ur_joint" type="fixed">
+    <origin xyz="0 0 0.5" rpy="0 0 0"/>
+    <parent link="ground_plane"/>
+    <child link="support_ur"/>
+  </joint>
+
+  <link name="optical_camera_frame"/>
+  <joint name="optical_camera_frame" type="fixed">
+    <origin xyz="0.25 -0.6 1.7" rpy="0 ${pi} ${pi}"/>
+    <parent link="ground_plane"/>
+    <child link="optical_camera_frame"/>
+  </joint>
+
+  <link name="vimbax_camera_DEV_000F315CCC4E"/>
+  <joint name="optical_vimbax_frame" type="fixed">
+    <origin xyz="0.0 -0.0 0.0" rpy="0 0 0"/>
+    <parent link="optical_camera_frame"/>
+    <child link="vimbax_camera_DEV_000F315CCC4E"/>
+  </joint>
   <!--parent="robot_mount"-->
 
     <!--This will create the specific robot-->
     <xacro:ur_robot
       name="${ur_type}"
       tf_prefix="${ur_type}_"
-      parent="ground_plane"
+      parent="support_ur"
       joint_limits_parameters_file="${joint_limits_parameters_file}"
       kinematics_parameters_file="${kinematics_parameters_file}"
       physical_parameters_file="${physical_parameters_file}"
       visual_parameters_file="${visual_parameters_file}"
       generate_ros2_control_tag="false"
     >
-      <origin xyz="0 0 0" rpy="0 0 0" />
+      <origin xyz="0 0 0.5" rpy="0 0 0" />
     </xacro:ur_robot>
     
     <xacro:plate_support 

@@ -45,8 +45,6 @@ Si vous souhaitez modifer les dimensions de la plaque, plusieurs étapes sont n�
 1. Modifier les dimensions dans l'URDF du robot 
 2. Modifier les paramètres `plate_length` et `plate_width` dans `vs_ur_ws.cpp` dans la package `vs_ur_ws`
 
-Il est ainsi possible de pouvoir choisir une zone plus restreinte à texturer pour une plaque donnée. En effet, il est possible de définir une plaque de dimension $L \cdot l$ dans l'URDF et ensuite dans le noeud ROS2, une plaque de **dimensions inférieures** $L' \cdot l'$.  
-
 #### Position relative entre la base du robot et le scanner
 
 Pour modifier la position relative de la box par rapport à la base du robot, il suffit de modifier les paramètres `robotBase_to_box_x`, `robotBase_to_box_y` et `box_to_ground`.

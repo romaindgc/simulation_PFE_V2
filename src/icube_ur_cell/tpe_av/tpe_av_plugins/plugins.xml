@@ -1,0 +1,5 @@
+<library path="tpe_av_plugins">  
+  <class type="tpe_av_plugins::TpeAv3D" base_class_type="tpe_base::TpeBase">
+    <description>3D visual servoing plugin.</description>
+  </class>
+</library>
