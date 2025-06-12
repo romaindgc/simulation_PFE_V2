@@ -139,20 +139,24 @@ std::vector<std::array<double, 3>> plate_corners(double length, double width)
     return corners;
 }
 
-std::vector<geometry_msgs::msg::Point> grid_definition(double longueur, double largeur, double patch_size = 0.08) {
+std::vector<geometry_msgs::msg::Point> grid_definition(double longueur, double largeur, double patch_size = 0.08, double recouvrement = 0) {
     std::vector<geometry_msgs::msg::Point> points;
+
+    // Nombre de patches sur X et Y
+    int n_patches_x = static_cast<int>(longueur / (patch_size-recouvrement));
+    int n_patches_y = static_cast<int>(largeur / (patch_size-recouvrement));
+
+    //Length of the segment created by the points
+    double Sx = n_patches_x * (patch_size-recouvrement);
+    double Sy = n_patches_y * (patch_size-recouvrement);
 
     // Coin en haut à gauche
     double c1_x = -longueur / 2.0;
     double c1_y = largeur / 2.0;
 
     // Premier centre de patch
-    double p_init_x = c1_x + patch_size / 2.0;
-    double p_init_y = c1_y - patch_size / 2.0;
-
-    // Nombre de patches sur X et Y
-    int n_patches_x = static_cast<int>(longueur / patch_size);
-    int n_patches_y = static_cast<int>(largeur / patch_size);
+    double p_init_x = c1_x + ((longueur - Sx)/2.0);
+    double p_init_y = c1_y - ((largeur - Sy)/2.0);
 
     double x = p_init_x;
     double y = p_init_y;
@@ -167,7 +171,7 @@ std::vector<geometry_msgs::msg::Point> grid_definition(double longueur, double l
 
     for (int i = 0; i <= n_patches_x; ++i) {
         if (i != 0) {
-            x += patch_size;
+            x += (patch_size-recouvrement);
             if (i % 2 == 0) {
                 y = p_init_y;
             }
@@ -181,9 +185,9 @@ std::vector<geometry_msgs::msg::Point> grid_definition(double longueur, double l
 
         for (int j = 0; j < n_patches_y; ++j) {
             if (i % 2 == 0) {
-                y -= patch_size;
+                y -= (patch_size-recouvrement);
             } else {
-                y += patch_size;
+                y += (patch_size-recouvrement);
             }
 
             geometry_msgs::msg::Point pt;
@@ -195,13 +199,15 @@ std::vector<geometry_msgs::msg::Point> grid_definition(double longueur, double l
         }
     }
 
+    RCLCPP_INFO(rclcpp::get_logger("grid_definition"), "Number of points in the grid : (%ld)", points.size());
+
     return points;
 }
 
 std::vector<double> get_end_effector_orientation(
     std::shared_ptr<tf2_ros::Buffer> tf_buffer,
     const std::string& from_frame = "world",
-    const std::string& to_frame = "ur5e_plate_support")
+    const std::string& to_frame = "ur5_plate_support")
 {
     try {
         geometry_msgs::msg::TransformStamped transformStamped =
@@ -216,6 +222,25 @@ std::vector<double> get_end_effector_orientation(
     }
 }
 
+std::vector<double> get_end_effector_position(
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer,
+    const std::string& from_frame = "world",
+    const std::string& to_frame = "ur5_plate_support")
+{
+    try {
+        geometry_msgs::msg::TransformStamped transformStamped =
+            tf_buffer->lookupTransform(from_frame, to_frame, tf2::TimePointZero);
+
+        const auto& t = transformStamped.transform.translation;
+        return {t.x, t.y, t.z};
+    }
+    catch (const tf2::TransformException& ex) {
+        RCLCPP_WARN(rclcpp::get_logger("TF2"), "Could not get transform: %s", ex.what());
+        return {};  // retourne un vecteur vide en cas d'échec
+    }
+}
+
+
 
 //Function for writting data to the CSV file
 /*The 6 first columns are the joint values of the robot (J1 to J6)
@@ -223,7 +248,7 @@ The 3 next columns are the coordinates of the tested point (x,y,z) in the plate 
 The 3 next columns are the coordinates of the end effector (x,y,z) in the plate frame : target pose
 The last column is the reachability of the point/end effector pose
 */
-void writeToCSV(const std::vector<double>& joint_values, bool reachable, const std::string& filename, const geometry_msgs::msg::Point & tested_point, const geometry_msgs::msg::Pose& effector_pose, double base_to_box_x ,double base_to_box_y, double planning_time, int max_planning_iterations, int error_code,const std::vector<double>& end_effector_orientation)
+void writeToCSV(const std::vector<double>& joint_values, bool reachable, const std::string& filename, const geometry_msgs::msg::Point & tested_point, const geometry_msgs::msg::Pose& effector_pose, double base_to_box_x ,double base_to_box_y, double planning_time, int max_planning_iterations, int error_code,const std::vector<double>& end_effector_orientation, double overlapping,const std::vector<double>& end_effector_position)
 {
     std::ofstream file;
     file.open(filename, std::ios_base::app); // Mode ajout
@@ -265,7 +290,13 @@ void writeToCSV(const std::vector<double>& joint_values, bool reachable, const s
     file << error_code << ",";
 
     //Write end-effector orientation
-    file << end_effector_orientation[0] << "," << end_effector_orientation[1] << "," << end_effector_orientation[2] << "," << end_effector_orientation[3] << std::endl;
+    file << end_effector_orientation[0] << "," << end_effector_orientation[1] << "," << end_effector_orientation[2] << "," << end_effector_orientation[3] << ",";
+
+    //Write end-effector position
+    file << end_effector_position[0] << "," << end_effector_position[1] << "," << end_effector_position[2] << ",";
+
+    //Write the allowed overlapping value
+    file << overlapping << std::endl;
 
     file.close();
 }
@@ -281,14 +312,15 @@ int main(int argc, char *argv[])
     );
 
     // Declare parameters
-    node->declare_parameter("plate_length", 0.30);
-    node->declare_parameter("plate_width", 0.30);
+    node->declare_parameter("plate_length", 0.3);
+    node->declare_parameter("plate_width", 0.3);
     node->declare_parameter("robotBase_to_box_x", 0.0); //Distance entre le centre de la box et de la base du robot selon x world
-    node->declare_parameter("robotBase_to_box_y", 0.5); //Distance entre le centre de la box et de la base du robot selon y world
+    node->declare_parameter("robotBase_to_box_y", 0.905); //Distance entre le centre de la box et de la base du robot selon y world
     node->declare_parameter("box_to_ground", 0.935); //0.975 - 0.040 (on décale tout de 40mm car le robot est sur un socle)
     node->declare_parameter("working_distance_under_box", 0.1497); //0.1497 215mm sous la lentille et donc à 215-65.3 = 149.7mm sous la box car elle comprend le ring de lumière
     node->declare_parameter("planning_time", 5.0);
-    node->declare_parameter("max_planning_iterations", 5);
+    node->declare_parameter("max_planning_iterations", 15);
+    node->declare_parameter("overlapping", 0.005); //Allow overlapping between patches
 
     // Get parameters
     double plate_length = node->get_parameter("plate_length").as_double();
@@ -299,6 +331,7 @@ int main(int argc, char *argv[])
     double working_distance_under_box = node->get_parameter("working_distance_under_box").as_double();
     double planning_time_init = node->get_parameter("planning_time").as_double();
     int max_planning_iterations = node->get_parameter("max_planning_iterations").as_int();
+    double overlapping = node->get_parameter("overlapping").as_double();
 
     // Define the working distance
     double working_distance_from_ground = box_to_ground - working_distance_under_box;
@@ -307,16 +340,10 @@ int main(int argc, char *argv[])
     using moveit::planning_interface::MoveGroupInterface;
     auto move_group_interface = MoveGroupInterface(node, "ur_manipulator");
 
-    //Ajusting the tolerance of the pose goal
-    //move_group_interface.setGoalTolerance(0.01);
-
     // Charger le modèle du robot
     robot_model_loader::RobotModelLoader robot_model_loader(node, "robot_description");
     moveit::core::RobotModelPtr kinematic_model = robot_model_loader.getModel();
     planning_scene::PlanningScene planning_scene(kinematic_model);
-    
-    
-    moveit::core::RobotState robot_state(kinematic_model);
 
     // Construct and initialize MoveItVisualTools
     auto moveit_visual_tools = moveit_visual_tools::MoveItVisualTools{
@@ -325,29 +352,16 @@ int main(int argc, char *argv[])
     moveit_visual_tools.deleteAllMarkers();
     moveit_visual_tools.loadRemoteControl();
 
+    //Set the planner
+    move_group_interface.setPlanningPipelineId("pilz_industrial_motion_planner");
+    move_group_interface.setPlannerId("PTP"); 
 
     //Set the plannig time 
     move_group_interface.setPlanningTime(planning_time_init);
 
-    //Set the planner
-    move_group_interface.setPlanningPipelineId("ompl");
-    move_group_interface.setPlannerId("RRTstarkConfigDefault");
-    //move_group_interface.setPlannerId("PRMstarkConfigDefault");
-    //move_group_interface.setPlannerId("RRTConnectkConfigDefault");
-
-
     //Increase the speed and the acceleration of the robot at their maximum to reduce the time of the simulation
     move_group_interface.setMaxVelocityScalingFactor(0.05);
     move_group_interface.setMaxAccelerationScalingFactor(0.05);
-
-    //Set the initial pose 
-    RCLCPP_INFO(node->get_logger(), "Initial pose started");
-    rclcpp::sleep_for(std::chrono::seconds(2));
-    move_group_interface.setNamedTarget("initial");
-    move_group_interface.move();
-    RCLCPP_INFO(node->get_logger(), "Initial pose reached");
-    rclcpp::sleep_for(std::chrono::seconds(2));
-    
 
     // Set a buffer and a listerner for the transform
     auto tf_buffer = std::make_shared<tf2_ros::Buffer>(node->get_clock());
@@ -361,7 +375,7 @@ int main(int argc, char *argv[])
     try {
         transformStamped_PW = tf_buffer->lookupTransform(
             "world",  // target_frame (child)
-            "ur5e_plate_support", // source_frame (parent) : frame tool0 and plate_link are the same
+            "ur5_plate_support", // source_frame (parent) 
             tf2::TimePointZero
         );
     } catch (tf2::TransformException &ex) {
@@ -381,7 +395,7 @@ int main(int argc, char *argv[])
 
 
     // Define the points of the plate (e.g., corners, grid)
-    std::vector<geometry_msgs::msg::Point> points = grid_definition(plate_length, plate_width);
+    std::vector<geometry_msgs::msg::Point> points = grid_definition(plate_width, plate_length, 0.08, overlapping);
 
 
     // Create collision object for the robot to avoid
@@ -426,22 +440,23 @@ int main(int argc, char *argv[])
     int marker_id = 0;
 
     //CVS file 
-    std::string csv_file = "/home/stagiaire/DEGRACE/PFE/csv/reachable_workspace.csv";
+    std::string csv_file = "/home/stagiaire/DEGRACE/PFE/csv/reachable_workspace_UR5.csv";
 
     //Variables for the planning
     int planning_iterations = 0;
     bool success = false;
     int error_code = 0;
     int planning_time = planning_time_init;
-    bool success_point_1 = false;
+    bool is_in_collision = false;
     std::vector<std::vector<double>> joint_trajectory_points;
     std::vector<double> last_configuration;
     std::vector<std::string> joint_names;
     std::vector<double> start_configuration;
     std::vector<double> end_effector_orientation;
+    std::vector<double> end_effector_position;
 
 
-    rclcpp::sleep_for(std::chrono::seconds(15));
+    rclcpp::sleep_for(std::chrono::seconds(2));
 
     for (size_t i = 0; i < points.size(); ++i)
     {
@@ -464,7 +479,7 @@ int main(int argc, char *argv[])
         RCLCPP_INFO(node->get_logger(), "Planning trajectory...");
 
         // We try to plan the trajectory several times
-        while ((planning_iterations < max_planning_iterations) && (success == false) && (planning_time < 20))
+        while ((planning_iterations < max_planning_iterations) && (success == false))
         {
             RCLCPP_INFO(node->get_logger(), "Iteration [%d] is starting.", planning_iterations);
             auto [local_success, local_joint_trajectory_points,local_error_code, local_last_config, local_joint_name] = plan_trajectory_and_joints(move_group_interface, effector_pose, plan);
@@ -479,13 +494,22 @@ int main(int argc, char *argv[])
             //Print the output in the logger
             RCLCPP_INFO(node->get_logger(), "Success : %s", success ? "true" : "false");
             
+            // Test de collision (because we use a cartesian planner)
+            collision_detection::CollisionRequest collision_request;
+            collision_detection::CollisionResult collision_result;
+            planning_scene.checkCollision(collision_request, collision_result);
+            is_in_collision = collision_result.collision;
+            RCLCPP_INFO(node->get_logger(), "Test CC : Curent state is  %s", is_in_collision ? "in collision" : " not in collisions");
+
+            if (is_in_collision)
+            {
+                RCLCPP_INFO(node->get_logger(), "Collision CS detected : success --> false and code error = 100");
+                success = false;
+                error_code = 100;
+            }
 
             if (success)
             {   
-                if(i==0){
-                    success_point_1 = true;
-                    RCLCPP_INFO(node->get_logger(), "First point ok");
-                }
                 RCLCPP_INFO(node->get_logger(), "Planning succeeded.");
                 break; // Exit the loop if planning is successful
             }
@@ -494,11 +518,14 @@ int main(int argc, char *argv[])
                 RCLCPP_INFO(node->get_logger(), "Planning failed.");
                 RCLCPP_INFO(node->get_logger(), "Error code : (%d)", error_code);
 
-                if(error_code == -6){
-                    //Time out : increase the planning time 
-                    planning_time = planning_time + 5;
-                    move_group_interface.setPlanningTime(planning_time);
-                    RCLCPP_INFO(node->get_logger(), "Planning time increased : new value (%d) -->", planning_time);
+                if((error_code == -6) || (error_code == -2)){
+                    //Time out : increase the planning time
+                    if (planning_time < 20)
+                    {
+                        planning_time = planning_time + 5;
+                        move_group_interface.setPlanningTime(planning_time);
+                        RCLCPP_INFO(node->get_logger(), "Planning time increased : new value (%d) -->", planning_time);
+                    }
                 }
                 rclcpp::sleep_for(std::chrono::seconds(1)); // Wait before retrying
             }
@@ -518,19 +545,15 @@ int main(int argc, char *argv[])
             end_effector_orientation = get_end_effector_orientation(tf_buffer);
             RCLCPP_INFO(node->get_logger(), "End effector oriention [%f, %f, %f, %f].", end_effector_orientation[0],end_effector_orientation[1],end_effector_orientation[2],end_effector_orientation[3]);
 
-            if(success_point_1){
-                //We use a cartesian planner now 
-                // Plus tard, bascule vers le planificateur Pilz
-                move_group_interface.setPlanningPipelineId("pilz_industrial_motion_planner");
-                move_group_interface.setPlannerId("PTP");  // ou "LIN", "CIRC" selon ton besoin
-                RCLCPP_INFO(node->get_logger(), "Cartesian planner will be used");
-            }
+            //Extract the finale position of the end-effector
+            end_effector_position = get_end_effector_position(tf_buffer);
+            RCLCPP_INFO(node->get_logger(), "End effector position [%f, %f, %f].", end_effector_position[0],end_effector_position[1],end_effector_position[2]);
 
             // Write the data to CSV file
             RCLCPP_INFO(node->get_logger(), "Success : Writing data to CSV file...");
             for (const auto& joint_values : joint_trajectory_points)
             {
-                writeToCSV(joint_values, true, csv_file, point, effector_pose,robotBase_to_box_x, robotBase_to_box_y, planning_time, max_planning_iterations, error_code, end_effector_orientation);
+                writeToCSV(joint_values, true, csv_file, point, effector_pose,robotBase_to_box_x, robotBase_to_box_y, planning_time, max_planning_iterations, error_code, end_effector_orientation,overlapping,end_effector_position);
             }
             RCLCPP_INFO(node->get_logger(), "Success : Data written to CSV file.");
 
@@ -542,7 +565,7 @@ int main(int argc, char *argv[])
 
             // Write the data to CSV file
             RCLCPP_INFO(node->get_logger(), "Failed : Writing data to CSV file...");
-            writeToCSV({0.0,0.0,0.0,0.0,0.0,0.0}, false, csv_file, point, effector_pose,robotBase_to_box_x, robotBase_to_box_y, planning_time, max_planning_iterations, error_code, end_effector_orientation);
+            writeToCSV({0.0,0.0,0.0,0.0,0.0,0.0}, false, csv_file, point, effector_pose,robotBase_to_box_x, robotBase_to_box_y, planning_time, max_planning_iterations, error_code, end_effector_orientation,overlapping,end_effector_position);
             RCLCPP_INFO(node->get_logger(), "Failed : Data written to CSV file.");
         }
         
